@@ -7,7 +7,7 @@ public class Nodo {
     private String id;
     private int x;
     private int y;
-    private List<Nodo> vecinos;
+    public List<Nodo> vecinos;
 
     public Nodo(String id, int x, int y) {
         this.id = id;
