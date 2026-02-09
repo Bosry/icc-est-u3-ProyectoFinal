@@ -33,7 +33,6 @@ public class App extends JFrame {
         btnBorrarDir = new JButton("Borrar Dir");
         btnLimpiar = new JButton("Limpiar");
 
-        // Todos añadidos al panel
         pnl.add(btnBFS); pnl.add(btnDFS);
         pnl.add(new JSeparator(JSeparator.VERTICAL));
         pnl.add(btnDireccional); pnl.add(btnBidireccional);
@@ -43,9 +42,7 @@ public class App extends JFrame {
         add(pnl, BorderLayout.NORTH);
         add(new JScrollPane(mapaPanel), BorderLayout.CENTER);
 
-        // --- MONITOR DE ESTADOS ---
         Timer monitor = new Timer(100, e -> {
-            // Lógica por defecto cuando no hay un modo de confirmación activo
             if (modoActual.isEmpty()) {
                 List<Nodo> sel = mapaPanel.getNodosSeleccionados();
                 boolean hayDos = (sel.size() == 2);
@@ -53,7 +50,6 @@ public class App extends JFrame {
 
                 btnDireccional.setEnabled(hayDos);
                 btnBidireccional.setEnabled(hayDos);
-                // Los botones de borrar siempre están activos si no hay modo activo
                 btnBorrarNodo.setEnabled(true); 
                 btnBorrarDir.setEnabled(true);
                 btnBFS.setEnabled(true);
@@ -61,7 +57,6 @@ public class App extends JFrame {
                 btnBloquear.setEnabled(true);
             }
 
-            // Detección de ruta para BFS/DFS
             if ((modoActual.equals("BFS") || modoActual.equals("DFS")) 
                 && mapaPanel.getInicio() != null && mapaPanel.getFin() != null) {
                 
@@ -71,8 +66,6 @@ public class App extends JFrame {
             }
         });
         monitor.start();
-
-        // --- EVENTOS DE BOTONES ---
 
         btnBorrarNodo.addActionListener(e -> {
             if (modoActual.equals("BORRAR_NODO")) {
@@ -199,7 +192,6 @@ public class App extends JFrame {
             JOptionPane.showMessageDialog(this, "No hay camino disponible.");
         }
         
-        // Reset manual de estados de algoritmo para permitir ver la ruta
         modoActual = "";
         setBotonesHabilitados(true);
         resetColoresBotones();

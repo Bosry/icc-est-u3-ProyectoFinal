@@ -29,23 +29,17 @@ public class MapaPanel extends JPanel {
         } catch (Exception e) {
             setPreferredSize(new Dimension(800, 600));
         }
-
-        // Timer para repintar suavemente
         new javax.swing.Timer(50, e -> repaint()).start();
 
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 Nodo n = obtenerNodoEn(e.getX(), e.getY());
-
-                // MODO BLOQUEO
                 if (modoBloqueoActivo && n != null) {
                     if (nodosParaBloquear.contains(n)) nodosParaBloquear.remove(n);
                     else nodosParaBloquear.add(n);
                     return;
                 }
-
-                // CLICK DERECHO: Selección Verde (Con deselección)
                 if (SwingUtilities.isRightMouseButton(e) && n != null) {
                     if (seleccionados.contains(n)) {
                         seleccionados.remove(n);
@@ -54,8 +48,6 @@ public class MapaPanel extends JPanel {
                     }
                     return;
                 }
-
-                // CLICK IZQUIERDO: Selección Roja (Inicio/Fin para Algoritmos)
                 if (SwingUtilities.isLeftMouseButton(e) && esperandoRojos && n != null) {
                     if (inicio == null) inicio = n;
                     else if (fin == null && n != inicio) fin = n;
@@ -78,14 +70,10 @@ public class MapaPanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (mapa != null) g2.drawImage(mapa, 0, 0, null);
-
-        // 1. DIBUJAR ARISTAS (Flechas)
         for (Nodo n : grafo.obtenerTodosLosNodos()) {
             for (Nodo v : n.getVecinos()) {
                 Color colorArista = Color.GRAY;
                 float grosor = 1.5f;
-
-                // Si estamos en modo borrar dirección y están seleccionados, pintar AZUL
                 if (modoBorrarDireccion && seleccionados.contains(n) && seleccionados.contains(v)) {
                     colorArista = Color.BLUE;
                     grosor = 3.0f;
@@ -98,7 +86,6 @@ public class MapaPanel extends JPanel {
         }
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
 
-        // 2. DIBUJAR RUTA VERDE (Resultado de Algoritmos)
         if (rutaVerde != null && rutaVerde.size() > 1) {
             for (int i = 0; i < rutaVerde.size() - 1; i++) {
                 dibujarFlecha(g2, rutaVerde.get(i).getX(), rutaVerde.get(i).getY(), 
@@ -106,7 +93,6 @@ public class MapaPanel extends JPanel {
             }
         }
 
-        // 3. DIBUJAR NODOS Y TEXTO
         for (Nodo n : grafo.nodos.values()) {
             float alpha = 1.0f;
             if (modoBloqueoActivo) alpha = nodosParaBloquear.contains(n) ? 1.0f : 0.3f;
@@ -114,18 +100,13 @@ public class MapaPanel extends JPanel {
             
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
 
-            // Color del nodo según estado
             if (n == inicio || n == fin) g2.setColor(Color.RED);
             else if (seleccionados.contains(n)) g2.setColor(Color.GREEN);
             else g2.setColor(Color.BLACK);
 
             g2.fillOval(n.getX() - 8, n.getY() - 8, 16, 16);
-            
-            // Borde blanco para que resalte
             g2.setColor(Color.WHITE);
             g2.drawOval(n.getX() - 8, n.getY() - 8, 16, 16);
-
-            // TEXTO EN NEGRO (Corregido)
             g2.setColor(Color.BLACK);
             g2.setFont(new Font("Arial", Font.BOLD, 12));
             g2.drawString(n.getId(), n.getX() + 10, n.getY() + 5);
@@ -152,7 +133,6 @@ public class MapaPanel extends JPanel {
         g2.fill(head);
     }
 
-    // --- GETTERS Y SETTERS DE CONTROL ---
     public void setModoBorrarDireccion(boolean b) { this.modoBorrarDireccion = b; }
     public void setModoBloqueo(boolean b) { this.modoBloqueoActivo = b; this.nodosParaBloquear.clear(); }
     public void setEsperandoRojos(boolean b) { this.esperandoRojos = b; }

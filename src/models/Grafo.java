@@ -12,21 +12,12 @@ public class Grafo {
             nodos.put(id, new Nodo(id, x, y));
         }
     }
-
-    /**
-     * Elimina un nodo y limpia todas las conexiones (aristas) 
-     * que otros nodos tengan hacia él.
-     */
     public void eliminarNodo(String id) {
         Nodo n = nodos.get(id);
         if (n == null) return;
-
-        // 1. Recorrer todos los demás nodos para quitar a 'n' de sus listas de vecinos
         for (Nodo otro : nodos.values()) {
             otro.getVecinos().remove(n); 
         }
-
-        // 2. Eliminar el nodo del mapa principal
         nodos.remove(id);
         System.out.println("Nodo " + id + " eliminado correctamente.");
     }
@@ -38,8 +29,6 @@ public class Grafo {
     public Collection<Nodo> obtenerTodosLosNodos() {
         return nodos.values();
     }
-
-    // --- ALGORITMOS DE BÚSQUEDA ---
 
     public List<String> bfs(String inicioId, String finId) {
         if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) return null;
@@ -108,15 +97,11 @@ public class Grafo {
         return camino;
     }
 
-    // --- PERSISTENCIA (GUARDAR Y CARGAR) ---
-
     public void guardarEnArchivo(String ruta) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(ruta))) {
-            // Guardar Nodos: N,ID,X,Y,Bloqueado
             for (Nodo n : nodos.values()) {
                 pw.println("N," + n.getId() + "," + n.getX() + "," + n.getY() + "," + n.isBloqueado());
             }
-            // Guardar Aristas: A,Origen,Destino
             for (Nodo n : nodos.values()) {
                 for (Nodo v : n.getVecinos()) {
                     pw.println("A," + n.getId() + "," + v.getId());
@@ -147,8 +132,6 @@ public class Grafo {
                     aristasParaCargar.add(p);
                 }
             }
-
-            // Conectar los vecinos después de cargar todos los nodos
             for (String[] a : aristasParaCargar) {
                 Nodo origen = nodos.get(a[1]);
                 Nodo destino = nodos.get(a[2]);
