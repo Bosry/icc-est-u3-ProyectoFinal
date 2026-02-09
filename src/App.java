@@ -24,7 +24,6 @@ public class App extends JFrame {
     private boolean modoBloquear = false;
 
     public App() {
-
         grafo = new Grafo();
         grafo.cargarDesdeArchivo("assets/grafo.txt");
 
@@ -43,9 +42,11 @@ public class App extends JFrame {
 
         txtInicio = new JTextField(6);
         txtDestino = new JTextField(6);
+
         btnBFS = new JButton("BFS");
         btnDFS = new JButton("DFS");
         btnTabla = new JButton("Tabla tiempos");
+
         btnBorrar = new JButton("Borrar");
         btnBloquear = new JButton("Bloquear");
         btnLimpiar = new JButton("Limpiar");
@@ -54,7 +55,6 @@ public class App extends JFrame {
         top.add(txtInicio);
         top.add(new JLabel("Destino:"));
         top.add(txtDestino);
-
         top.add(btnBFS);
         top.add(btnDFS);
         top.add(btnTabla);
@@ -79,13 +79,10 @@ public class App extends JFrame {
     }
 
     private void configurarEventos() {
-
         btnBFS.addActionListener(e -> ejecutarBusqueda(true));
         btnDFS.addActionListener(e -> ejecutarBusqueda(false));
 
-        btnTabla.addActionListener(e ->
-            new TablaTiempos(this).setVisible(true)
-        );
+        btnTabla.addActionListener(e -> new TablaTiempos(this).setVisible(true));
 
         btnLimpiar.addActionListener(e -> {
             grafo.limpiar();
@@ -97,46 +94,65 @@ public class App extends JFrame {
 
         btnBorrar.addActionListener(e -> {
 
-            modoBorrar = !modoBorrar;
+            if (modoBorrar || mapaPanel.isModoBorrarDireccion()) {
 
-            if (modoBorrar) {
-                bloquearBotones(true);
-                mapaPanel.activarModoBorrar(true);
-                btnBorrar.setText("Confirmar borrar");
-            } else {
-                mapaPanel.activarModoBorrar(false);
-
-                if (mapaPanel.hayNodosBorrar()) {
+                if (mapaPanel.isModoBorrarDireccion() && mapaPanel.hayDireccionSeleccionada()) {
+                    mapaPanel.confirmarBorradoDireccion();
+                } else if (modoBorrar && mapaPanel.hayNodosBorrar()) {
                     mapaPanel.confirmarBorrado();
                 }
 
-                bloquearBotones(false);
+                modoBorrar = false;
+                mapaPanel.activarModoBorrar(false);
+                mapaPanel.activarModoBorrarDireccion(false);
                 btnBorrar.setText("Borrar");
+                bloquearBotones(false);
+
+            } else {
+                String[] opciones = {"Nodo", "Dirección"};
+                int seleccion = JOptionPane.showOptionDialog(
+                        this,
+                        "¿Qué deseas borrar?",
+                        "Borrar",
+                        JOptionPane.DEFAULT_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        opciones,
+                        opciones[0]
+                );
+
+                if (seleccion == 0) {
+                    modoBorrar = true;
+                    mapaPanel.activarModoBorrar(true);
+                    btnBorrar.setText("Confirmar borrar");
+                    bloquearBotones(true);
+                } else if (seleccion == 1) {
+                    mapaPanel.activarModoBorrarDireccion(true);
+                    btnBorrar.setText("Confirmar borrar");
+                    bloquearBotones(true);
+                }
             }
         });
 
         btnBloquear.addActionListener(e -> {
-
-            modoBloquear = !modoBloquear;
-
-            if (modoBloquear) {
-                bloquearBotones(true);
+            if (!modoBloquear) {
+                modoBloquear = true;
                 mapaPanel.activarModoBloquear(true);
                 btnBloquear.setText("Confirmar bloqueo");
+                bloquearBotones(true);
             } else {
-                mapaPanel.activarModoBloquear(false);
-
                 if (mapaPanel.hayNodosBloquear()) {
                     mapaPanel.confirmarBloqueo();
                 }
-
-                bloquearBotones(false);
+                modoBloquear = false;
+                mapaPanel.activarModoBloquear(false);
                 btnBloquear.setText("Bloquear");
+                bloquearBotones(false);
             }
         });
     }
-    private void ejecutarBusqueda(boolean esBFS) {
 
+    private void ejecutarBusqueda(boolean esBFS) {
         String ini = txtInicio.getText().trim();
         String fin = txtDestino.getText().trim();
 
@@ -153,10 +169,7 @@ public class App extends JFrame {
             JOptionPane.showMessageDialog(this, "No se encontró ruta");
         } else {
             mapaPanel.setRuta(ruta);
-            mapaPanel.setPuntos(
-                    grafo.nodos.get(ini),
-                    grafo.nodos.get(fin)
-            );
+            mapaPanel.setPuntos(grafo.nodos.get(ini), grafo.nodos.get(fin));
         }
     }
 
@@ -165,6 +178,7 @@ public class App extends JFrame {
         btnDFS.setEnabled(!bloquear);
         btnTabla.setEnabled(!bloquear);
         btnLimpiar.setEnabled(!bloquear);
+        btnBloquear.setEnabled(!bloquear);
     }
 
     public static void main(String[] args) {
