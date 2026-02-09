@@ -8,17 +8,27 @@ public class Grafo {
     public Map<String, Nodo> nodos = new HashMap<>();
 
     public void agregarNodo(String id, int x, int y) {
-        nodos.putIfAbsent(id, new Nodo(id, x, y));
+        if (!nodos.containsKey(id)) {
+            nodos.put(id, new Nodo(id, x, y));
+        }
     }
 
+    /**
+     * Elimina un nodo y limpia todas las conexiones (aristas) 
+     * que otros nodos tengan hacia él.
+     */
     public void eliminarNodo(String id) {
         Nodo n = nodos.get(id);
         if (n == null) return;
 
+        // 1. Recorrer todos los demás nodos para quitar a 'n' de sus listas de vecinos
         for (Nodo otro : nodos.values()) {
-            otro.eliminarVecino(n);
+            otro.getVecinos().remove(n); 
         }
+
+        // 2. Eliminar el nodo del mapa principal
         nodos.remove(id);
+        System.out.println("Nodo " + id + " eliminado correctamente.");
     }
 
     public void limpiar() {
@@ -29,56 +39,89 @@ public class Grafo {
         return nodos.values();
     }
 
-    public void conectar(String a, String b) {
-        Nodo n1 = nodos.get(a);
-        Nodo n2 = nodos.get(b);
-        if (n1 != null && n2 != null) {
-            n1.agregarVecino(n2);
-            n2.agregarVecino(n1);
-        }
-    }
+    // --- ALGORITMOS DE BÚSQUEDA ---
 
-    public void conectarDirigido(String a, String b) {
-        Nodo n1 = nodos.get(a);
-        Nodo n2 = nodos.get(b);
-        if (n1 != null && n2 != null) {
-            n1.conectarA(n2);
-        }
-    }
+    public List<String> bfs(String inicioId, String finId) {
+        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) return null;
 
-    public void conectarBidireccional(String a, String b) {
-        conectarDirigido(a, b);
-        conectarDirigido(b, a);
-    }
+        Queue<String> cola = new LinkedList<>();
+        Map<String, String> padres = new HashMap<>();
+        Set<String> visitados = new HashSet<>();
 
-    public void borrarDireccion(String a, String b) {
-        Nodo n1 = nodos.get(a);
-        Nodo n2 = nodos.get(b);
-        if (n1 != null && n2 != null) {
-            n1.desconectarA(n2);
-            n2.desconectarA(n1);
-        }
-    }
+        cola.add(inicioId);
+        visitados.add(inicioId);
 
-    public void guardarEnArchivo(String ruta) {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(ruta))) {
+        while (!cola.isEmpty()) {
+            String actual = cola.poll();
+            if (actual.equals(finId)) return reconstruirCamino(padres, inicioId, finId);
 
-            for (Nodo n : nodos.values()) {
-                pw.println("N," + n.getId() + "," + n.getX() + "," + n.getY());
+            Nodo nodoActual = nodos.get(actual);
+            if (nodoActual.isBloqueado()) continue;
+
+            for (Nodo vecino : nodoActual.getVecinos()) {
+                if (!visitados.contains(vecino.getId()) && !vecino.isBloqueado()) {
+                    visitados.add(vecino.getId());
+                    padres.put(vecino.getId(), actual);
+                    cola.add(vecino.getId());
+                }
             }
+        }
+        return null;
+    }
 
-            Set<String> guardadas = new HashSet<>();
-            for (Nodo n : nodos.values()) {
-                for (Nodo v : n.getVecinos()) {
-                    String key = n.getId() + "-" + v.getId();
-                    String rev = v.getId() + "-" + n.getId();
-                    if (!guardadas.contains(key) && !guardadas.contains(rev)) {
-                        pw.println("A," + n.getId() + "," + v.getId());
-                        guardadas.add(key);
+    public List<String> dfs(String inicioId, String finId) {
+        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) return null;
+
+        Stack<String> pila = new Stack<>();
+        Map<String, String> padres = new HashMap<>();
+        Set<String> visitados = new HashSet<>();
+
+        pila.push(inicioId);
+
+        while (!pila.isEmpty()) {
+            String actual = pila.pop();
+            if (actual.equals(finId)) return reconstruirCamino(padres, inicioId, finId);
+
+            if (!visitados.contains(actual)) {
+                visitados.add(actual);
+                Nodo nodoActual = nodos.get(actual);
+                if (nodoActual.isBloqueado()) continue;
+
+                for (Nodo vecino : nodoActual.getVecinos()) {
+                    if (!visitados.contains(vecino.getId()) && !vecino.isBloqueado()) {
+                        padres.put(vecino.getId(), actual);
+                        pila.push(vecino.getId());
                     }
                 }
             }
+        }
+        return null;
+    }
 
+    private List<String> reconstruirCamino(Map<String, String> padres, String inicio, String fin) {
+        List<String> camino = new ArrayList<>();
+        String actual = fin;
+        while (actual != null) {
+            camino.add(0, actual);
+            actual = padres.get(actual);
+        }
+        return camino;
+    }
+
+    // --- PERSISTENCIA (GUARDAR Y CARGAR) ---
+
+    public void guardarEnArchivo(String ruta) {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(ruta))) {
+            // Guardar Nodos: N,ID,X,Y,Bloqueado
+            for (Nodo n : nodos.values()) {
+                pw.println("N," + n.getId() + "," + n.getX() + "," + n.getY() + "," + n.isBloqueado());
+            }
+            // Guardar Aristas: A,Origen,Destino
+            for (Nodo n : nodos.values()) {
+                for (Nodo v : n.getVecinos()) {
+                    pw.println("A," + n.getId() + "," + v.getId());
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,23 +129,33 @@ public class Grafo {
 
     public void cargarDesdeArchivo(String ruta) {
         nodos.clear();
-        List<String[]> aristas = new ArrayList<>();
+        File file = new File(ruta);
+        if (!file.exists()) return;
 
         try (BufferedReader br = new BufferedReader(new FileReader(ruta))) {
             String l;
+            List<String[]> aristasParaCargar = new ArrayList<>();
+
             while ((l = br.readLine()) != null) {
                 String[] p = l.split(",");
                 if (p[0].equals("N")) {
                     agregarNodo(p[1], Integer.parseInt(p[2]), Integer.parseInt(p[3]));
+                    if (p.length > 4) {
+                        nodos.get(p[1]).setBloqueado(Boolean.parseBoolean(p[4]));
+                    }
                 } else if (p[0].equals("A")) {
-                    aristas.add(p);
+                    aristasParaCargar.add(p);
                 }
             }
 
-            for (String[] a : aristas) {
-                conectar(a[1], a[2]);
+            // Conectar los vecinos después de cargar todos los nodos
+            for (String[] a : aristasParaCargar) {
+                Nodo origen = nodos.get(a[1]);
+                Nodo destino = nodos.get(a[2]);
+                if (origen != null && destino != null) {
+                    origen.agregarVecino(destino);
+                }
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }

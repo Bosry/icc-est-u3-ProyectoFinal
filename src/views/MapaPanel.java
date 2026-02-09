@@ -11,26 +11,18 @@ import models.Grafo;
 import models.Nodo;
 
 public class MapaPanel extends JPanel {
-
     private Grafo grafo;
     private BufferedImage mapa;
-
-    private boolean modoBorrar = false;
-    private boolean modoBloquear = false;
-    private boolean modoBorrarDireccion = false;
-
-    private Set<Nodo> seleccionados = new HashSet<>();
-    private java.util.List<Nodo> direccionSeleccion = new ArrayList<>();
-
-    private java.util.List<Nodo> ruta;
+    private java.util.List<Nodo> seleccionados = new ArrayList<>();
+    private java.util.List<Nodo> rutaVerde;
     private Nodo inicio, fin;
+    private boolean esperandoRojos = false;
+    private boolean modoBloqueoActivo = false;
+    private boolean modoBorrarDireccion = false;
+    private Set<Nodo> nodosParaBloquear = new HashSet<>();
 
     public MapaPanel(Grafo grafo) {
         this.grafo = grafo;
-
-        setFocusable(true);
-        requestFocusInWindow();
-
         try {
             mapa = ImageIO.read(new File("assets/mapa.png"));
             setPreferredSize(new Dimension(mapa.getWidth(), mapa.getHeight()));
@@ -38,172 +30,143 @@ public class MapaPanel extends JPanel {
             setPreferredSize(new Dimension(800, 600));
         }
 
+        // Timer para repintar suavemente
+        new javax.swing.Timer(50, e -> repaint()).start();
+
         addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                requestFocusInWindow();
-
+            public void mousePressed(MouseEvent e) {
                 Nodo n = obtenerNodoEn(e.getX(), e.getY());
 
-                if (modoBorrarDireccion && n != null) {
-                    if (!direccionSeleccion.contains(n)) direccionSeleccion.add(n);
-                    else direccionSeleccion.remove(n);
-                    repaint();
+                // MODO BLOQUEO
+                if (modoBloqueoActivo && n != null) {
+                    if (nodosParaBloquear.contains(n)) nodosParaBloquear.remove(n);
+                    else nodosParaBloquear.add(n);
                     return;
                 }
 
-                if ((modoBorrar || modoBloquear) && n != null) {
-                    alternarSeleccion(n);
-                    repaint();
+                // CLICK DERECHO: Selección Verde (Con deselección)
+                if (SwingUtilities.isRightMouseButton(e) && n != null) {
+                    if (seleccionados.contains(n)) {
+                        seleccionados.remove(n);
+                    } else if (seleccionados.size() < 2) {
+                        seleccionados.add(n);
+                    }
                     return;
                 }
 
-                if (!modoBorrar && !modoBloquear && !modoBorrarDireccion && SwingUtilities.isLeftMouseButton(e)) {
-                    String id = "N" + (grafo.nodos.size() + 1);
-                    grafo.agregarNodo(id, e.getX(), e.getY());
-                    repaint();
+                // CLICK IZQUIERDO: Selección Roja (Inicio/Fin para Algoritmos)
+                if (SwingUtilities.isLeftMouseButton(e) && esperandoRojos && n != null) {
+                    if (inicio == null) inicio = n;
+                    else if (fin == null && n != inicio) fin = n;
                 }
             }
         });
     }
 
-    public void activarModoBorrar(boolean estado) {
-        modoBorrar = estado;
-        seleccionados.clear();
-        repaint();
-    }
-
-    public void activarModoBloquear(boolean estado) {
-        modoBloquear = estado;
-        seleccionados.clear();
-        repaint();
-    }
-
-    public void activarModoBorrarDireccion(boolean estado) {
-        modoBorrarDireccion = estado;
-        direccionSeleccion.clear();
-        repaint();
-    }
-
-    public boolean isModoBorrarDireccion() { return modoBorrarDireccion; }
-    public boolean hayNodosBorrar() { return !seleccionados.isEmpty(); }
-    public boolean hayNodosBloquear() { return !seleccionados.isEmpty(); }
-    public boolean hayDireccionSeleccionada() { return direccionSeleccion.size() == 2; }
-
-    public void confirmarBorrado() {
-        if (seleccionados.isEmpty()) return;
-        for (Nodo n : new HashSet<>(seleccionados)) {
-            grafo.eliminarNodo(n.getId());
-        }
-        seleccionados.clear();
-        repaint();
-    }
-
-    public void confirmarBorradoDireccion() {
-        if (direccionSeleccion.size() != 2) return;
-        Nodo a = direccionSeleccion.get(0);
-        Nodo b = direccionSeleccion.get(1);
-
-        a.eliminarVecino(b);
-        b.eliminarVecino(a);
-
-        direccionSeleccion.clear();
-        repaint();
-    }
-
-    public void confirmarBloqueo() {
-        if (seleccionados.isEmpty()) return;
-        for (Nodo n : new HashSet<>(seleccionados)) {
+    public void aplicarCambiosBloqueo() {
+        for (Nodo n : nodosParaBloquear) {
             n.setBloqueado(!n.isBloqueado());
         }
-        seleccionados.clear();
-        repaint();
-    }
-
-    public void setRuta(java.util.List<Nodo> ruta) {
-        this.ruta = ruta;
-        repaint();
-    }
-
-    public void setPuntos(Nodo i, Nodo f) {
-        inicio = i;
-        fin = f;
-        repaint();
-    }
-
-    private void dibujarFlecha(Graphics2D g, int x1, int y1, int x2, int y2) {
-        g.drawLine(x1, y1, x2, y2);
-        double phi = Math.toRadians(25);
-        int barb = 12;
-        double dy = y2 - y1;
-        double dx = x2 - x1;
-        double theta = Math.atan2(dy, dx);
-        for (int j = 0; j < 2; j++) {
-            double rho = theta + (j == 0 ? phi : -phi);
-            double x = x2 - barb * Math.cos(rho);
-            double y = y2 - barb * Math.sin(rho);
-            g.drawLine(x2, y2, (int) x, (int) y);
-        }
+        nodosParaBloquear.clear();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (mapa != null) g2.drawImage(mapa, 0, 0, null);
 
-        g2.setColor(Color.GRAY);
-        g2.setStroke(new BasicStroke(2));
+        // 1. DIBUJAR ARISTAS (Flechas)
         for (Nodo n : grafo.obtenerTodosLosNodos()) {
             for (Nodo v : n.getVecinos()) {
-                dibujarFlecha(g2, n.getX(), n.getY(), v.getX(), v.getY());
+                Color colorArista = Color.GRAY;
+                float grosor = 1.5f;
+
+                // Si estamos en modo borrar dirección y están seleccionados, pintar AZUL
+                if (modoBorrarDireccion && seleccionados.contains(n) && seleccionados.contains(v)) {
+                    colorArista = Color.BLUE;
+                    grosor = 3.0f;
+                }
+
+                float alpha = (n.isBloqueado() || v.isBloqueado()) ? 0.2f : 1.0f;
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+                dibujarFlecha(g2, n.getX(), n.getY(), v.getX(), v.getY(), colorArista, grosor);
+            }
+        }
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+
+        // 2. DIBUJAR RUTA VERDE (Resultado de Algoritmos)
+        if (rutaVerde != null && rutaVerde.size() > 1) {
+            for (int i = 0; i < rutaVerde.size() - 1; i++) {
+                dibujarFlecha(g2, rutaVerde.get(i).getX(), rutaVerde.get(i).getY(), 
+                             rutaVerde.get(i+1).getX(), rutaVerde.get(i+1).getY(), new Color(0, 200, 0), 3.5f);
             }
         }
 
-        if (ruta != null) {
-            g2.setStroke(new BasicStroke(3));
-            g2.setColor(Color.RED);
-            for (int i = 0; i < ruta.size() - 1; i++) {
-                Nodo a = ruta.get(i);
-                Nodo b = ruta.get(i + 1);
-                g2.drawLine(a.getX(), a.getY(), b.getX(), b.getY());
-            }
-        }
+        // 3. DIBUJAR NODOS Y TEXTO
+        for (Nodo n : grafo.nodos.values()) {
+            float alpha = 1.0f;
+            if (modoBloqueoActivo) alpha = nodosParaBloquear.contains(n) ? 1.0f : 0.3f;
+            else if (n.isBloqueado()) alpha = 0.4f;
+            
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
 
-        if (direccionSeleccion.size() == 2) {
-            Nodo a = direccionSeleccion.get(0);
-            Nodo b = direccionSeleccion.get(1);
-            g2.setColor(Color.RED);
-            g2.setStroke(new BasicStroke(3));
-            g2.drawLine(a.getX(), a.getY(), b.getX(), b.getY());
-        }
-
-        for (Nodo n : grafo.obtenerTodosLosNodos()) {
-            if (seleccionados.contains(n)) g2.setColor(Color.GREEN);
-            else if (direccionSeleccion.contains(n)) g2.setColor(Color.GREEN);
-            else if (n.isBloqueado()) g2.setColor(Color.LIGHT_GRAY);
-            else if (n.equals(inicio)) g2.setColor(Color.BLUE);
-            else if (n.equals(fin)) g2.setColor(Color.RED);
+            // Color del nodo según estado
+            if (n == inicio || n == fin) g2.setColor(Color.RED);
+            else if (seleccionados.contains(n)) g2.setColor(Color.GREEN);
             else g2.setColor(Color.BLACK);
 
-            g2.fillOval(n.getX() - 6, n.getY() - 6, 12, 12);
+            g2.fillOval(n.getX() - 8, n.getY() - 8, 16, 16);
+            
+            // Borde blanco para que resalte
+            g2.setColor(Color.WHITE);
+            g2.drawOval(n.getX() - 8, n.getY() - 8, 16, 16);
+
+            // TEXTO EN NEGRO (Corregido)
             g2.setColor(Color.BLACK);
-            g2.drawString(n.getId(), n.getX() + 8, n.getY());
+            g2.setFont(new Font("Arial", Font.BOLD, 12));
+            g2.drawString(n.getId(), n.getX() + 10, n.getY() + 5);
         }
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
     }
+
+    private void dibujarFlecha(Graphics2D g2, int x1, int y1, int x2, int y2, Color c, float g) {
+        double angle = Math.atan2(y2 - y1, x2 - x1);
+        int offset = 6;
+        int startX = (int) (x1 + offset * Math.sin(angle));
+        int startY = (int) (y1 - offset * Math.cos(angle));
+        int endX = (int) ((x2 + offset * Math.sin(angle)) - 14 * Math.cos(angle));
+        int endY = (int) ((y2 - offset * Math.cos(angle)) - 14 * Math.sin(angle));
+
+        g2.setStroke(new BasicStroke(g));
+        g2.setColor(c);
+        g2.drawLine(startX, startY, endX, endY);
+
+        Polygon head = new Polygon();
+        head.addPoint(endX, endY);
+        head.addPoint((int)(endX - 8 * Math.cos(angle - 0.4)), (int)(endY - 8 * Math.sin(angle - 0.4)));
+        head.addPoint((int)(endX - 8 * Math.cos(angle + 0.4)), (int)(endY - 8 * Math.sin(angle + 0.4)));
+        g2.fill(head);
+    }
+
+    // --- GETTERS Y SETTERS DE CONTROL ---
+    public void setModoBorrarDireccion(boolean b) { this.modoBorrarDireccion = b; }
+    public void setModoBloqueo(boolean b) { this.modoBloqueoActivo = b; this.nodosParaBloquear.clear(); }
+    public void setEsperandoRojos(boolean b) { this.esperandoRojos = b; }
+    public void setRutaVerde(java.util.List<Nodo> r) { this.rutaVerde = r; }
+    public java.util.List<Nodo> getNodosSeleccionados() { return seleccionados; }
+    public void limpiarSeleccion() { seleccionados.clear(); }
+    public void limpiarPuntosRuta() { inicio = null; fin = null; rutaVerde = null; }
+    public Nodo getInicio() { return inicio; }
+    public Nodo getFin() { return fin; }
 
     private Nodo obtenerNodoEn(int x, int y) {
-        for (Nodo n : grafo.obtenerTodosLosNodos()) {
-            int dx = x - n.getX();
-            int dy = y - n.getY();
-            if (dx * dx + dy * dy <= 100) return n;
+        for (Nodo n : grafo.nodos.values()) {
+            if (Math.hypot(x - n.getX(), y - n.getY()) < 15) return n;
         }
         return null;
-    }
-
-    private void alternarSeleccion(Nodo n) {
-        if (seleccionados.contains(n)) seleccionados.remove(n);
-        else seleccionados.add(n);
     }
 }

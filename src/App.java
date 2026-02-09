@@ -1,187 +1,212 @@
-import controllers.BFS;
-import controllers.DFS;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import models.Grafo;
 import models.Nodo;
 import views.MapaPanel;
-import views.TablaTiempos;
 
 public class App extends JFrame {
-
     private Grafo grafo;
     private MapaPanel mapaPanel;
-
-    private BFS bfs;
-    private DFS dfs;
-
-    private JTextField txtInicio, txtDestino;
-    private JButton btnBFS, btnDFS, btnTabla;
-    private JButton btnBorrar, btnBloquear, btnLimpiar;
-
-    private boolean modoBorrar = false;
-    private boolean modoBloquear = false;
+    private JButton btnBFS, btnDFS, btnDireccional, btnBidireccional, btnBloquear, btnBorrarNodo, btnBorrarDir, btnLimpiar;
+    private String modoActual = ""; 
 
     public App() {
         grafo = new Grafo();
         grafo.cargarDesdeArchivo("assets/grafo.txt");
+        mapaPanel = new MapaPanel(grafo);
 
-        bfs = new BFS();
-        dfs = new DFS();
-
-        setTitle("Simulador BFS / DFS");
+        setResizable(false);
+        setTitle("Graph Editor Pro - BFS/DFS & Borrado");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        setResizable(false);
 
-        mapaPanel = new MapaPanel(grafo);
-        add(mapaPanel, BorderLayout.CENTER);
-
-        JPanel top = new JPanel(new FlowLayout());
-
-        txtInicio = new JTextField(6);
-        txtDestino = new JTextField(6);
-
+        JPanel pnl = new JPanel(new FlowLayout());
         btnBFS = new JButton("BFS");
         btnDFS = new JButton("DFS");
-        btnTabla = new JButton("Tabla tiempos");
-
-        btnBorrar = new JButton("Borrar");
+        btnDireccional = new JButton("Conectar Dir");
+        btnBidireccional = new JButton("Conectar Bid");
         btnBloquear = new JButton("Bloquear");
+        btnBorrarNodo = new JButton("Borrar Nodo");
+        btnBorrarDir = new JButton("Borrar Dir");
         btnLimpiar = new JButton("Limpiar");
 
-        top.add(new JLabel("Inicio:"));
-        top.add(txtInicio);
-        top.add(new JLabel("Destino:"));
-        top.add(txtDestino);
-        top.add(btnBFS);
-        top.add(btnDFS);
-        top.add(btnTabla);
-        top.add(btnBorrar);
-        top.add(btnBloquear);
-        top.add(btnLimpiar);
+        // Todos añadidos al panel
+        pnl.add(btnBFS); pnl.add(btnDFS);
+        pnl.add(new JSeparator(JSeparator.VERTICAL));
+        pnl.add(btnDireccional); pnl.add(btnBidireccional);
+        pnl.add(btnBloquear); pnl.add(btnBorrarNodo); pnl.add(btnBorrarDir);
+        pnl.add(btnLimpiar);
+        
+        add(pnl, BorderLayout.NORTH);
+        add(new JScrollPane(mapaPanel), BorderLayout.CENTER);
 
-        add(top, BorderLayout.NORTH);
+        // --- MONITOR DE ESTADOS ---
+        Timer monitor = new Timer(100, e -> {
+            // Lógica por defecto cuando no hay un modo de confirmación activo
+            if (modoActual.isEmpty()) {
+                List<Nodo> sel = mapaPanel.getNodosSeleccionados();
+                boolean hayDos = (sel.size() == 2);
+                boolean hayAlgo = (!sel.isEmpty());
 
-        configurarEventos();
+                btnDireccional.setEnabled(hayDos);
+                btnBidireccional.setEnabled(hayDos);
+                // Los botones de borrar siempre están activos si no hay modo activo
+                btnBorrarNodo.setEnabled(true); 
+                btnBorrarDir.setEnabled(true);
+                btnBFS.setEnabled(true);
+                btnDFS.setEnabled(true);
+                btnBloquear.setEnabled(true);
+            }
 
-        pack();
-        setLocationRelativeTo(null);
-        setVisible(true);
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                grafo.guardarEnArchivo("assets/grafo.txt");
+            // Detección de ruta para BFS/DFS
+            if ((modoActual.equals("BFS") || modoActual.equals("DFS")) 
+                && mapaPanel.getInicio() != null && mapaPanel.getFin() != null) {
+                
+                String algoritmo = modoActual;
+                mapaPanel.setEsperandoRojos(false); 
+                procesarAlgoritmo(algoritmo);
             }
         });
-    }
+        monitor.start();
 
-    private void configurarEventos() {
-        btnBFS.addActionListener(e -> ejecutarBusqueda(true));
-        btnDFS.addActionListener(e -> ejecutarBusqueda(false));
+        // --- EVENTOS DE BOTONES ---
 
-        btnTabla.addActionListener(e -> new TablaTiempos(this).setVisible(true));
-
-        btnLimpiar.addActionListener(e -> {
-            grafo.limpiar();
-            mapaPanel.setRuta(null);
-            mapaPanel.setPuntos(null, null);
-            grafo.guardarEnArchivo("assets/grafo.txt");
-            mapaPanel.repaint();
-        });
-
-        btnBorrar.addActionListener(e -> {
-
-            if (modoBorrar || mapaPanel.isModoBorrarDireccion()) {
-
-                if (mapaPanel.isModoBorrarDireccion() && mapaPanel.hayDireccionSeleccionada()) {
-                    mapaPanel.confirmarBorradoDireccion();
-                } else if (modoBorrar && mapaPanel.hayNodosBorrar()) {
-                    mapaPanel.confirmarBorrado();
+        btnBorrarNodo.addActionListener(e -> {
+            if (modoActual.equals("BORRAR_NODO")) {
+                List<Nodo> sel = new ArrayList<>(mapaPanel.getNodosSeleccionados());
+                if (!sel.isEmpty()) {
+                    for (Nodo n : sel) grafo.eliminarNodo(n.getId());
                 }
-
-                modoBorrar = false;
-                mapaPanel.activarModoBorrar(false);
-                mapaPanel.activarModoBorrarDireccion(false);
-                btnBorrar.setText("Borrar");
-                bloquearBotones(false);
-
+                finalizarModo();
             } else {
-                String[] opciones = {"Nodo", "Dirección"};
-                int seleccion = JOptionPane.showOptionDialog(
-                        this,
-                        "¿Qué deseas borrar?",
-                        "Borrar",
-                        JOptionPane.DEFAULT_OPTION,
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        opciones,
-                        opciones[0]
-                );
-
-                if (seleccion == 0) {
-                    modoBorrar = true;
-                    mapaPanel.activarModoBorrar(true);
-                    btnBorrar.setText("Confirmar borrar");
-                    bloquearBotones(true);
-                } else if (seleccion == 1) {
-                    mapaPanel.activarModoBorrarDireccion(true);
-                    btnBorrar.setText("Confirmar borrar");
-                    bloquearBotones(true);
-                }
+                iniciarModo("BORRAR_NODO", btnBorrarNodo, Color.RED);
             }
+        });
+
+        btnBorrarDir.addActionListener(e -> {
+            if (modoActual.equals("BORRAR_DIR")) {
+                List<Nodo> sel = mapaPanel.getNodosSeleccionados();
+                if (sel.size() == 2) {
+                    sel.get(0).eliminarVecino(sel.get(1));
+                    sel.get(1).eliminarVecino(sel.get(0));
+                }
+                finalizarModo();
+            } else {
+                iniciarModo("BORRAR_DIR", btnBorrarDir, Color.CYAN);
+                mapaPanel.setModoBorrarDireccion(true);
+            }
+        });
+
+        btnBFS.addActionListener(e -> {
+            if (modoActual.equals("BFS")) finalizarModo();
+            else { iniciarModo("BFS", btnBFS, Color.YELLOW); mapaPanel.setEsperandoRojos(true); }
+        });
+
+        btnDFS.addActionListener(e -> {
+            if (modoActual.equals("DFS")) finalizarModo();
+            else { iniciarModo("DFS", btnDFS, Color.YELLOW); mapaPanel.setEsperandoRojos(true); }
         });
 
         btnBloquear.addActionListener(e -> {
-            if (!modoBloquear) {
-                modoBloquear = true;
-                mapaPanel.activarModoBloquear(true);
-                btnBloquear.setText("Confirmar bloqueo");
-                bloquearBotones(true);
-            } else {
-                if (mapaPanel.hayNodosBloquear()) {
-                    mapaPanel.confirmarBloqueo();
-                }
-                modoBloquear = false;
-                mapaPanel.activarModoBloquear(false);
-                btnBloquear.setText("Bloquear");
-                bloquearBotones(false);
+            if (modoActual.equals("BLOQUEAR")) {
+                mapaPanel.aplicarCambiosBloqueo();
+                finalizarModo();
+            } else { 
+                iniciarModo("BLOQUEAR", btnBloquear, Color.ORANGE); 
+                mapaPanel.setModoBloqueo(true); 
             }
         });
+
+        btnDireccional.addActionListener(e -> {
+            List<Nodo> sel = mapaPanel.getNodosSeleccionados();
+            if (sel.size() == 2) {
+                sel.get(1).eliminarVecino(sel.get(0));
+                sel.get(0).agregarVecino(sel.get(1));
+                grafo.guardarEnArchivo("assets/grafo.txt");
+                mapaPanel.limpiarSeleccion();
+            }
+        });
+
+        btnBidireccional.addActionListener(e -> {
+            List<Nodo> sel = mapaPanel.getNodosSeleccionados();
+            if (sel.size() == 2) {
+                sel.get(0).agregarVecino(sel.get(1));
+                sel.get(1).agregarVecino(sel.get(0));
+                grafo.guardarEnArchivo("assets/grafo.txt");
+                mapaPanel.limpiarSeleccion();
+            }
+        });
+
+        btnLimpiar.addActionListener(e -> finalizarModo());
+
+        pack();
+        setLocationRelativeTo(null);
     }
 
-    private void ejecutarBusqueda(boolean esBFS) {
-        String ini = txtInicio.getText().trim();
-        String fin = txtDestino.getText().trim();
+    private void iniciarModo(String modo, JButton boton, Color color) {
+        modoActual = modo;
+        setBotonesHabilitados(false);
+        boton.setEnabled(true);
+        boton.setBackground(color);
+        mapaPanel.limpiarPuntosRuta();
+    }
 
-        if (!grafo.nodos.containsKey(ini) || !grafo.nodos.containsKey(fin)) {
-            JOptionPane.showMessageDialog(this, "IDs inválidos");
-            return;
-        }
+    private void finalizarModo() {
+        modoActual = "";
+        setBotonesHabilitados(true);
+        resetColoresBotones();
+        mapaPanel.setModoBloqueo(false);
+        mapaPanel.setModoBorrarDireccion(false);
+        mapaPanel.setEsperandoRojos(false);
+        mapaPanel.limpiarSeleccion();
+        mapaPanel.limpiarPuntosRuta();
+        grafo.guardarEnArchivo("assets/grafo.txt");
+    }
 
-        List<Nodo> ruta = esBFS
-                ? bfs.buscar(grafo, ini, fin)
-                : dfs.buscarRuta(grafo, ini, fin);
+    private void setBotonesHabilitados(boolean s) {
+        btnBFS.setEnabled(s); btnDFS.setEnabled(s); btnBloquear.setEnabled(s);
+        btnBorrarNodo.setEnabled(s); btnBorrarDir.setEnabled(s); btnLimpiar.setEnabled(s);
+        btnDireccional.setEnabled(s); btnBidireccional.setEnabled(s);
+    }
 
-        if (ruta == null) {
-            JOptionPane.showMessageDialog(this, "No se encontró ruta");
+    private void resetColoresBotones() {
+        btnBFS.setBackground(null); btnDFS.setBackground(null);
+        btnBloquear.setBackground(null); btnBorrarNodo.setBackground(null);
+        btnBorrarDir.setBackground(null);
+    }
+
+    private void procesarAlgoritmo(String tipo) {
+        long startTime = System.nanoTime();
+        List<String> ids = (tipo.equals("BFS")) ? 
+            grafo.bfs(mapaPanel.getInicio().getId(), mapaPanel.getFin().getId()) : 
+            grafo.dfs(mapaPanel.getInicio().getId(), mapaPanel.getFin().getId());
+        long endTime = System.nanoTime();
+        
+        if (ids != null && !ids.isEmpty()) {
+            List<Nodo> camino = new ArrayList<>();
+            for (String id : ids) camino.add(grafo.nodos.get(id));
+            mapaPanel.setRutaVerde(camino);
+
+            double ms = (endTime - startTime) / 1_000_000.0;
+            String[] col = {"Algoritmo", "Tiempo (ms)", "Nodos"};
+            Object[][] data = {{ tipo, String.format("%.4f", ms), ids.size() }};
+            
+            JOptionPane.showMessageDialog(this, new JScrollPane(new JTable(new DefaultTableModel(data, col))), "Ruta Encontrada", JOptionPane.INFORMATION_MESSAGE);
         } else {
-            mapaPanel.setRuta(ruta);
-            mapaPanel.setPuntos(grafo.nodos.get(ini), grafo.nodos.get(fin));
+            JOptionPane.showMessageDialog(this, "No hay camino disponible.");
         }
-    }
-
-    private void bloquearBotones(boolean bloquear) {
-        btnBFS.setEnabled(!bloquear);
-        btnDFS.setEnabled(!bloquear);
-        btnTabla.setEnabled(!bloquear);
-        btnLimpiar.setEnabled(!bloquear);
-        btnBloquear.setEnabled(!bloquear);
+        
+        // Reset manual de estados de algoritmo para permitir ver la ruta
+        modoActual = "";
+        setBotonesHabilitados(true);
+        resetColoresBotones();
+        mapaPanel.setEsperandoRojos(false);
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(App::new);
+        SwingUtilities.invokeLater(() -> new App().setVisible(true));
     }
 }
