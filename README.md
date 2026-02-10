@@ -1,156 +1,53 @@
-# Proyecto Final – Simulador de Rutas con Grafos (BFS y DFS)
+# Graph Route Simulator - UPS Proyecto Final
 
-## Descripción del Proyecto
-Este proyecto corresponde al trabajo final de la unidad y consiste en el desarrollo de una aplicación de escritorio en **Java**, utilizando **Swing** para la interfaz gráfica.  
-La aplicación simula un mapa de calles mediante el uso de la estructura de datos **Grafo**, permitiendo representar intersecciones como nodos y calles como conexiones entre ellos.
-
-El sistema permite al usuario crear nodos de manera interactiva, conectarlos y obtener rutas entre dos puntos utilizando los algoritmos **BFS (Breadth-First Search)** y **DFS (Depth-First Search)**, mostrando visualmente el recorrido sobre el mapa.
+## Introducción
+Este proyecto consiste en el desarrollo de una aplicación interactiva en Java para el modelado y análisis de rutas sobre un mapa urbano. Utilizando la teoría de grafos, se representan las intersecciones como nodos y las calles como aristas. El objetivo principal es comparar el comportamiento de los algoritmos de búsqueda en anchura (**BFS**) y búsqueda en profundidad (**DFS**) en términos de eficiencia, nodos explorados y tiempo de respuesta.
 
 ---
 
-## Objetivos
+## Controles y Funcionalidades
+Para garantizar la integridad de los datos y una experiencia de usuario fluida, el sistema cuenta con los siguientes controles:
 
-### Objetivo General
-Desarrollar una aplicación gráfica que permita simular rutas en un mapa mediante grafos y aplicar los algoritmos BFS y DFS.
-
-### Objetivos Específicos
-- Representar nodos y conexiones en un entorno gráfico.
-- Permitir la creación y eliminación de nodos y aristas.
-- Aplicar los algoritmos BFS y DFS para la búsqueda de rutas.
-- Comparar el comportamiento y tiempo de ejecución de ambos algoritmos.
-- Guardar y cargar la información del grafo desde un archivo.
-
----
-
-## Estructura del Proyecto
-
-- `icc-est-u3-ProyectoFinal/`
-  - `src/`
-    - `controllers/`
-      - `BFS.java`
-      - `DFS.java`
-    - `models/`
-      - `Grafo.java`
-      - `Nodo.java`
-    - `views/`
-      - `MapaPanel.java`
-    - `App.java`
-  - `assets/`
-    - `mapa.png`
-    - `grafo.txt`
-  - `.gitignore`
-  - `README.md`
-
----
-
-## Modelo del Sistema
-
-### Nodo
-La clase `Nodo` representa una intersección del mapa.  
-Cada nodo contiene:
-- Un identificador único.
-- Coordenadas en el mapa (x, y).
-- Una lista de nodos vecinos que representan las conexiones.
-
-### Grafo
-La clase `Grafo` administra el conjunto de nodos y sus conexiones.  
-Permite agregar y eliminar nodos, crear conexiones bidireccionales y guardar o cargar la información del grafo desde un archivo de texto.
+* **Modelado Dinámico (`Shift + Click`):** Creación de nodos directamente sobre la interfaz gráfica en las coordenadas del cursor.
+* **Gestión de Aristas (`Click Derecho`):** Selección de dos nodos para establecer conexiones dirigidas (un solo sentido) o bidireccionales (doble sentido) con visualización de flechas.
+* **Modo Bloqueo:** Permite inhabilitar intersecciones o calles específicas, simulando cortes de vía o zonas restringidas.
+* **Sistema de Seguridad (Locks):** La interfaz bloquea automáticamente las funciones de edición mientras se ejecuta una búsqueda, evitando errores en el flujo de datos.
 
 ---
 
 ## Algoritmos Implementados
+Se implementaron dos estrategias fundamentales de recorrido en grafos:
 
-### BFS (Breadth-First Search)
-El algoritmo BFS recorre el grafo por niveles, explorando primero los nodos más cercanos al punto de inicio.  
-Este algoritmo es adecuado para encontrar rutas con el menor número de nodos.
+1.  **BFS (Breadth-First Search):** Utiliza una **Cola (FIFO)**. Garantiza encontrar la ruta con el menor número de saltos entre nodos.
+2.  **DFS (Depth-First Search):** Utiliza una **Pila (LIFO)**. Explora lo más profundo posible de cada rama antes de retroceder.
 
-### DFS (Depth-First Search)
-El algoritmo DFS explora el grafo en profundidad, avanzando por un camino hasta que no existen más nodos disponibles antes de retroceder.  
-Este algoritmo no garantiza la ruta más corta, pero permite recorrer completamente el grafo.
+
+
+### Fase de Visualización
+Cumpliendo con los requerimientos, la aplicación como tal separa la ejecución en dos fases visuales:
+* **Modo Exploración:** Los nodos visitados se marcan en color **amarillo** progresivamente.
+* **Modo Ruta Final:** Se traza una línea **verde** resaltada sobre el camino óptimo reconstruido.
+
+---
+## Demostración en Video
+En el siguiente enlace se presenta la funcionalidad completa del sistema, incluyendo el modelado del grafo, la simulación de bloqueos y la comparativa visual entre los algoritmos BFS y DFS.
 
 ---
 
-## Interfaz Gráfica
-La interfaz fue desarrollada con **Java Swing** y permite:
-- Visualizar el mapa base.
-- Crear nodos mediante clics sobre el mapa.
-- Conectar nodos ingresando sus identificadores.
-- Ejecutar BFS y DFS mediante botones.
-- Mostrar gráficamente la ruta encontrada.
-- Limpiar la ruta visualizada.
+## Análisis y Persistencia
+* **Reporte Automático:** Tabla adaptativa con el tiempo de ejecución (ms) y conteo de nodos explorados.
+* **Archivo CSV:** Exportación de datos de rendimiento a `assets/tiempos.csv`.
+* **Persistencia del Grafo:** Almacenamiento de la estructura en `assets/grafo.txt` para carga automática.
 
 ---
 
-## Uso de la Aplicación
-
-1. Al iniciar la aplicación, se carga el mapa y los nodos guardados previamente.
-2. Para crear un nodo, se debe hacer clic izquierdo sobre el mapa.
-3. Para conectar dos nodos, se utiliza el clic derecho y se ingresan los IDs correspondientes.
-4. Para buscar una ruta, se ingresa el nodo de inicio y destino y se presiona el botón BFS o DFS.
-5. La ruta encontrada se muestra gráficamente sobre el mapa.
-6. El botón limpiar permite borrar la ruta visualizada.
+## Bibliografía
+* **Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009).** *Introduction to Algorithms*. MIT Press.
+* **Oracle. (2024).** *Java Documentation - Swing & Collections Framework*. Recuperado de [docs.oracle.com](https://docs.oracle.com/javase/8/docs/api/)
 
 ---
-
-## Persistencia de Datos
-
-La información del grafo se guarda en el archivo `grafo.txt`.  
-Este archivo permite que los nodos y conexiones creados se mantengan al cerrar y volver a abrir la aplicación.
-
-### Formato del Archivo `grafo.txt`
-- Las líneas que comienzan con `N` representan nodos y contienen su ID y coordenadas.
-- Las líneas que comienzan con `A` representan conexiones entre nodos.
-
----
-
-## Variación de los Tiempos de Ejecución
-
-Aunque se ejecute el mismo algoritmo sobre la misma ruta, los tiempos de ejecución pueden variar.  
-Esto se debe a factores como la gestión de memoria, el orden de exploración de los nodos y la carga del sistema en el momento de la ejecución.
-
----
-
-## Limitaciones del Proyecto
-
-- Los algoritmos BFS y DFS no consideran pesos en las conexiones.
-- DFS no garantiza encontrar la ruta más corta.
-- El mapa utilizado es una imagen estática.
-- El sistema no cuenta con validaciones avanzadas de errores.
-
----
-
-## Organización del Código
-
-El proyecto se encuentra organizado de la siguiente manera:
-- `models`: contiene la lógica del sistema y las estructuras de datos.
-- `views`: maneja la interfaz gráfica y la visualización.
-- `controllers`: contiene la implementación de los algoritmos BFS y DFS.
-
----
-
-## Video de Funcionamiento (Pendiente)
-
-> **Nota:**  
-> En esta sección se añadirá un video explicativo donde se mostrará el funcionamiento de la aplicación, incluyendo:
-> - Creación de nodos  
-> - Conexión entre nodos  
-> - Ejecución de BFS y DFS  
-> - Visualización de rutas  
-> - Limpieza del mapa  
-
-**Enlace al video:** *(por agregar)*
-
----
-
-## Herramientas Utilizadas
-- Java
-- Java Swing
-- Estructuras de Datos (List, Map, Queue, Stack)
-- Git y GitHub
-
----
-
-##  Autor
-**Bryan Santos**  
-Computacion  
-Universidad Politécnica Salesiana
+**Desarrollado por:** Bryan Santos    
+**Materia:** Estructura de Datos  
+**Docente:** Ing. Pablo Torres  
+**Carrera:** Computacion   
+**Institución:** Universidad Politécnica Salesiana  

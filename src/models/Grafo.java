@@ -12,27 +12,21 @@ public class Grafo {
             nodos.put(id, new Nodo(id, x, y));
         }
     }
-    public void eliminarNodo(String id) {
-        Nodo n = nodos.get(id);
-        if (n == null) return;
-        for (Nodo otro : nodos.values()) {
-            otro.getVecinos().remove(n); 
+    public void registrarTiempoCSV(String algoritmo, double tiempoMs, int numNodos) {
+        File folder = new File("assets");
+        if (!folder.exists()) {
+            folder.mkdir();
         }
-        nodos.remove(id);
-        System.out.println("Nodo " + id + " eliminado correctamente.");
+        try (PrintWriter pw = new PrintWriter(new FileWriter("assets/tiempos.csv", true))) {
+            pw.println(algoritmo + "," + String.format("%.4f", tiempoMs) + "," + numNodos + "," + new java.util.Date());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-
-    public void limpiar() {
-        nodos.clear();
-    }
-
-    public Collection<Nodo> obtenerTodosLosNodos() {
-        return nodos.values();
-    }
-
-    public List<String> bfs(String inicioId, String finId) {
-        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) return null;
-
+    public List<String> bfs(String inicioId, String finId, List<String> explorados) {
+        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) {
+            return null;
+        }
         Queue<String> cola = new LinkedList<>();
         Map<String, String> padres = new HashMap<>();
         Set<String> visitados = new HashSet<>();
@@ -42,25 +36,26 @@ public class Grafo {
 
         while (!cola.isEmpty()) {
             String actual = cola.poll();
-            if (actual.equals(finId)) return reconstruirCamino(padres, inicioId, finId);
+            explorados.add(actual);
 
-            Nodo nodoActual = nodos.get(actual);
-            if (nodoActual.isBloqueado()) continue;
+            if (actual.equals(finId)) {
+                return reconstruirCamino(padres, inicioId, finId);
+            }
 
-            for (Nodo vecino : nodoActual.getVecinos()) {
-                if (!visitados.contains(vecino.getId()) && !vecino.isBloqueado()) {
-                    visitados.add(vecino.getId());
-                    padres.put(vecino.getId(), actual);
-                    cola.add(vecino.getId());
+            for (Nodo v : nodos.get(actual).getVecinos()) {
+                if (!visitados.contains(v.getId()) && !v.isBloqueado()) {
+                    visitados.add(v.getId());
+                    padres.put(v.getId(), actual);
+                    cola.add(v.getId());
                 }
             }
         }
         return null;
     }
-
-    public List<String> dfs(String inicioId, String finId) {
-        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) return null;
-
+    public List<String> dfs(String inicioId, String finId, List<String> explorados) {
+        if (!nodos.containsKey(inicioId) || !nodos.containsKey(finId)) {
+            return null;
+        }
         Stack<String> pila = new Stack<>();
         Map<String, String> padres = new HashMap<>();
         Set<String> visitados = new HashSet<>();
@@ -69,18 +64,21 @@ public class Grafo {
 
         while (!pila.isEmpty()) {
             String actual = pila.pop();
-            if (actual.equals(finId)) return reconstruirCamino(padres, inicioId, finId);
+            if (visitados.contains(actual)) {
+                continue;
+            }
 
-            if (!visitados.contains(actual)) {
-                visitados.add(actual);
-                Nodo nodoActual = nodos.get(actual);
-                if (nodoActual.isBloqueado()) continue;
+            visitados.add(actual);
+            explorados.add(actual);
 
-                for (Nodo vecino : nodoActual.getVecinos()) {
-                    if (!visitados.contains(vecino.getId()) && !vecino.isBloqueado()) {
-                        padres.put(vecino.getId(), actual);
-                        pila.push(vecino.getId());
-                    }
+            if (actual.equals(finId)) {
+                return reconstruirCamino(padres, inicioId, finId);
+            }
+
+            for (Nodo v : nodos.get(actual).getVecinos()) {
+                if (!visitados.contains(v.getId()) && !v.isBloqueado()) {
+                    padres.put(v.getId(), actual);
+                    pila.push(v.getId());
                 }
             }
         }
@@ -115,32 +113,45 @@ public class Grafo {
     public void cargarDesdeArchivo(String ruta) {
         nodos.clear();
         File file = new File(ruta);
-        if (!file.exists()) return;
-
+        if (!file.exists()) {
+            return;
+        }
         try (BufferedReader br = new BufferedReader(new FileReader(ruta))) {
             String l;
-            List<String[]> aristasParaCargar = new ArrayList<>();
-
+            List<String[]> aristas = new ArrayList<>();
             while ((l = br.readLine()) != null) {
                 String[] p = l.split(",");
                 if (p[0].equals("N")) {
                     agregarNodo(p[1], Integer.parseInt(p[2]), Integer.parseInt(p[3]));
-                    if (p.length > 4) {
-                        nodos.get(p[1]).setBloqueado(Boolean.parseBoolean(p[4]));
-                    }
+                    nodos.get(p[1]).setBloqueado(Boolean.parseBoolean(p[4]));
                 } else if (p[0].equals("A")) {
-                    aristasParaCargar.add(p);
+                    aristas.add(p);
                 }
             }
-            for (String[] a : aristasParaCargar) {
-                Nodo origen = nodos.get(a[1]);
-                Nodo destino = nodos.get(a[2]);
-                if (origen != null && destino != null) {
-                    origen.agregarVecino(destino);
+            for (String[] a : aristas) {
+                Nodo o = nodos.get(a[1]);
+                Nodo d = nodos.get(a[2]);
+                if (o != null && d != null) {
+                    o.agregarVecino(d);
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Collection<Nodo> obtenerTodosLosNodos() {
+        return nodos.values();
+    }
+
+    public void eliminarNodo(String id) {
+        Nodo n = nodos.get(id);
+        if (n == null) {
+            return;
+        }
+        for (Nodo otro : nodos.values()) {
+            otro.eliminarVecino(n);
+        }
+        nodos.remove(id);
     }
 }
