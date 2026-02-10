@@ -33,7 +33,7 @@ Cumpliendo con los requerimientos, la aplicación como tal separa la ejecución 
 ## Video Demostrativo
 En el siguiente enlace se presenta la funcionalidad completa del sistema, incluyendo el modelado del grafo, la simulación de bloqueos y la comparativa visual entre los algoritmos BFS y DFS.
 
-**Nota:** El video cuenta con audio explicativo. Si el reproductor lo inicia en silencio, activar el sonido en los controles del video o abrir el archivo `proyectoFinalVideo.mp4` directamente con su reproductor local.
+https://drive.google.com/file/d/1Qz6X0SQhuEVloXMEgRgAl5YMPgDYfHuS/view?usp=drive_link
 
 ## Requisitos para Ejecución
 1. Tener instalado **Java 17** o superior.
